@@ -5,7 +5,7 @@ use std::{
 };
 use thiserror::Error;
 
-#[derive(Error, Debug)]
+#[derive(Clone, Error, Debug)]
 pub enum FfiError {
     #[error("Invalid NULL pointer: {0}")]
     NullPointer(String),
@@ -20,6 +20,8 @@ thread_local! {
 }
 
 /// Sets the most recent error, clearing whatever may have been there before.
+///
+/// - `err` : error to set
 #[inline]
 pub fn set_last_error(err: FfiError) {
     LAST_ERROR.with(|prev| {
@@ -27,6 +29,7 @@ pub fn set_last_error(err: FfiError) {
     });
 }
 
+/// Gets the last error message.
 #[inline]
 pub fn get_last_error() -> String {
     LAST_ERROR
@@ -38,8 +41,14 @@ pub fn get_last_error() -> String {
 ///
 /// # Safety
 ///
+/// The pointer must point to a null-terminated string.
+///
 /// This function is meant to be called from the Foreign Function
 /// Interface.
+///
+/// # Parameters
+///
+/// - `error_message_ptr`   : pointer to the error message to set
 #[no_mangle]
 pub unsafe extern "C" fn h_set_error(error_message_ptr: *const c_char) -> i32 {
     let error_message = ffi_read_string!("error message", error_message_ptr);
@@ -47,14 +56,22 @@ pub unsafe extern "C" fn h_set_error(error_message_ptr: *const c_char) -> i32 {
     0
 }
 
-/// Gets the most recent error as utf-8 bytes, clearing it in the process.
+/// Externally gets the most recent error recorded on the Rust side, clearing
+/// it in the process.
 ///
 /// # Safety
+///
+/// The pointer `error_ptr` should point to a buffer which has been allocated
+/// `error_len` bytes. If the allocated size is smaller than `error_len`, a
+/// call to this function may result in a buffer overflow.
+///
+/// # Parameters
 ///
 /// - `error_ptr`: pointer to the buffer to which to write the error
 /// - `error_len`: size of the allocated memory
 #[no_mangle]
 pub unsafe extern "C" fn h_get_error(error_ptr: *mut c_char, error_len: *mut c_int) -> c_int {
+    // Get the error message as a null terminated string.
     let cs = ffi_unwrap!(
         CString::new(get_last_error()),
         "failed to convert error to CString"
