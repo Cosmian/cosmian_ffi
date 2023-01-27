@@ -28,6 +28,7 @@ pub fn set_last_error(err: FfiError) {
 }
 
 #[inline]
+#[must_use]
 pub fn get_last_error() -> String {
     LAST_ERROR
         .with(|prev| prev.borrow_mut().take())
