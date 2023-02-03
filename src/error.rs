@@ -7,10 +7,10 @@ use thiserror::Error;
 
 #[derive(Clone, Error, Debug)]
 pub enum FfiError {
-    #[error("Invalid NULL pointer: {0}")]
+    #[error("{0} shouldn't be null")]
     NullPointer(String),
 
-    #[error("FFI error: {0}")]
+    #[error("{0}")]
     Generic(String),
 }
 
@@ -121,6 +121,6 @@ mod tests {
             h_get_error(ptr, &mut len);
             String::from_utf8(bytes[..len as usize].to_vec()).unwrap()
         };
-        assert!(res.contains("NULL pointer"));
+        assert!(res.contains("shouldn't be null"));
     }
 }
